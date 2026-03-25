@@ -9,137 +9,122 @@ namespace TicTacToe
 {
     class JuegoTicTacToe
     {
-        private char[,] tablero;
-        private Jugador jugador1;
-        private Jugador jugador2;
-        private Jugador jugadorActual;
+        public string Id { get; private set; }
+        public char[,] Tablero { get; private set; }
+        public string EstadoJuego { get; private set; } // "EnCurso", "GanadorHumano", "GanadorBot", "Empate"
+        public string Mensaje { get; private set; }
 
-        public JuegoTicTacToe()
+        private JugadorHumano jugadorHumano;
+        private JugadorBot jugadorBot;
+
+        public JuegoTicTacToe(string nombreJugador, char simboloJugador)
         {
-            tablero = new char[3, 3];
+            Id = Guid.NewGuid().ToString(); // Genera un ID único para la partida
+            Tablero = new char[3, 3];
             InicializarTablero();
-        }
 
-        public void IniciarJuego()
-        {
-            Console.WriteLine("Bienvenido al juego!!");
-            Console.WriteLine("Ingresa tu nombre: ");
-            string nombreJugador = Console.ReadLine();
-
-            char simboloJugador = ' ';
-            while (simboloJugador != 'X' && simboloJugador != 'O')
-            {
-                Console.WriteLine("Elige tu simbolo (X o O): ");
-                string entrada = Console.ReadLine();
-                if (entrada.Length > 0)
-                {
-                    simboloJugador = entrada[0];
-                }
-            }
             char simboloBot = simboloJugador == 'X' ? 'O' : 'X';
-            jugador1 = new JugadorHumano(simboloJugador, nombreJugador);
-            jugador2 = new JugadorBot(simboloBot, "Bot");
-            jugadorActual = simboloJugador == 'X' ? jugador1 : jugador2;
-            bool juegoTerminado = false;
-            MostrarTablero();
+            jugadorHumano = new JugadorHumano(simboloJugador, nombreJugador);
+            jugadorBot = new JugadorBot(simboloBot, "Bot");
 
-            while (!juegoTerminado)
-            {
-                Posicion jugada = jugadorActual.HacerJugada(tablero);
-                tablero[jugada.Fila, jugada.Columna] = jugadorActual.Simbolo;
-                MostrarTablero();
+            EstadoJuego = "EnCurso";
+            Mensaje = $"Partida iniciada. Turno de {jugadorHumano.Nombre}.";
 
-                if (VerificarGanador())
-                {
-                    Console.WriteLine($"¡Felicidades {jugadorActual.Nombre}! Has ganado!");
-                    juegoTerminado = true;
-                } else if (TableroLleno())
-                {
-                    Console.WriteLine("¡Empate!");
-                    juegoTerminado = true;
-                }
-                else
-                {
-                    jugadorActual = jugadorActual == jugador1 ? jugador2 : jugador1;
-                }
-            }
-            Console.WriteLine("Quieres jugar de nuevo?");
-            string respuesta = Console.ReadLine();
-            if (respuesta.Length > 0 && respuesta[0] == 'S')
+            // Si el humano elige 'O', el bot ('X') empieza primero.
+            if (simboloJugador == 'O')
             {
-                InicializarTablero();
-                IniciarJuego();
+                EjecutarTurnoBot();
             }
         }
 
-        public void InicializarTablero()
+        private void InicializarTablero()
         {
             for (int i = 0; i < 3; i++)
-            {
                 for (int j = 0; j < 3; j++)
+                    Tablero[i, j] = ' ';
+        }
+
+        public void ProcesarJugadaHumano(int fila, int columna)
+        {
+            if (EstadoJuego != "EnCurso")
+            {
+                Mensaje = "El juego ya ha terminado.";
+                return;
+            }
+
+            // Validar jugada
+            if (fila < 0 || fila > 2 || columna < 0 || columna > 2 || Tablero[fila, columna] != ' ')
+            {
+                Mensaje = "Movimiento inválido. Casilla ocupada o fuera de rango.";
+                return;
+            }
+
+            // Registrar jugada del humano
+            Tablero[fila, columna] = jugadorHumano.Simbolo;
+
+            if (VerificarGanador(jugadorHumano.Simbolo))
+            {
+                EstadoJuego = "GanadorHumano";
+                Mensaje = $"¡Felicidades {jugadorHumano.Nombre}! Has ganado.";
+                return;
+            }
+
+            if (TableroLleno())
+            {
+                EstadoJuego = "Empate";
+                Mensaje = "¡Empate!";
+                return;
+            }
+
+            // Turno del Bot
+            EjecutarTurnoBot();
+        }
+
+        private void EjecutarTurnoBot()
+        {
+            Posicion jugadaBot = jugadorBot.HacerJugada(Tablero);
+            if (jugadaBot != null)
+            {
+                Tablero[jugadaBot.Fila, jugadaBot.Columna] = jugadorBot.Simbolo;
+
+                if (VerificarGanador(jugadorBot.Simbolo))
                 {
-                    tablero[i, j] = ' ';
+                    EstadoJuego = "GanadorBot";
+                    Mensaje = "El Bot ha ganado.";
+                    return;
                 }
+
+                if (TableroLleno())
+                {
+                    EstadoJuego = "Empate";
+                    Mensaje = "¡Empate!";
+                    return;
+                }
+
+                Mensaje = $"El Bot jugó en la posición ({jugadaBot.Fila}, {jugadaBot.Columna}). Tu turno.";
             }
         }
-        public void MostrarTablero()
+
+        private bool VerificarGanador(char simbolo)
         {
-            Console.WriteLine("\n  0 1 2");
+            // Filas y Columnas
             for (int i = 0; i < 3; i++)
             {
-                Console.Write(i + " ");
-                for (int j = 0; j < 3; j++)
-                {
-                    Console.Write(tablero[i, j]);
-                    if (j < 2) Console.Write("|");
-                }
-                Console.WriteLine();
-                if (i < 2) Console.WriteLine("  -+-+-");
+                if (Tablero[i, 0] == simbolo && Tablero[i, 1] == simbolo && Tablero[i, 2] == simbolo) return true;
+                if (Tablero[0, i] == simbolo && Tablero[1, i] == simbolo && Tablero[2, i] == simbolo) return true;
             }
-            Console.WriteLine();
-        }
-        public bool VerificarGanador()
-        {
-            char simbolo = jugadorActual.Simbolo;
-            for(int i = 0; i < 3; i++)
-            {
-                if (tablero[i, 0] == simbolo && tablero[i, 1] == simbolo && tablero[i, 2] == simbolo)
-                {
-                    return true;
-                }
-            }
+            // Diagonales
+            if (Tablero[0, 0] == simbolo && Tablero[1, 1] == simbolo && Tablero[2, 2] == simbolo) return true;
+            if (Tablero[0, 2] == simbolo && Tablero[1, 1] == simbolo && Tablero[2, 0] == simbolo) return true;
 
-            for (int j = 0; j < 3; j++)
-            {
-                if(tablero[0, j] == simbolo && tablero[1, j] == simbolo && tablero[2, j] == simbolo)
-                {
-                    return true;
-                }
-            }
-
-            if (tablero[0, 0] == simbolo && tablero[1, 1] == simbolo && tablero[2, 2] == simbolo)
-            {
-                return true;
-            }
-            if(tablero[0, 2] == simbolo && tablero[1, 1] == simbolo && tablero[2, 0] == simbolo)
-            {
-                return true;
-            }
             return false;
         }
 
-        public bool TableroLleno()
+        private bool TableroLleno()
         {
-            for(int i = 0; i < 3; i++)
-            {
+            for (int i = 0; i < 3; i++)
                 for (int j = 0; j < 3; j++)
-                {
-                    if (tablero[i, j] == ' ')
-                    {
-                        return false;
-                    }
-                }
-            }
+                    if (Tablero[i, j] == ' ') return false;
             return true;
         }
     }

@@ -1,0 +1,10 @@
+@url = https://localhost:62679
+
+### 1. Iniciar un nuevo juego
+POST {{url}}/api/juego
+Content-Type: application/json
+
+{
+  "nombreJugador": "Ariany",
+  "simboloElegido": "X"
+}
